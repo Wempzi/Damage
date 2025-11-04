@@ -12,7 +12,7 @@ local localPlayer = Players.LocalPlayer
 -- WINDOW
 ---------------------------------------------------------------------
 local Window = Rayfield:CreateWindow({
-    Name = "Damage Hub",
+    Name = "Damage gab",
     Icon = 0,
     LoadingTitle = "Damage Hub Loading",
     LoadingSubtitle = "by Elyme",
