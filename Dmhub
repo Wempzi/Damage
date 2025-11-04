@@ -1,0 +1,477 @@
+-- Violence District Hub Full Script (Player + Visuals ESP + HitBoxes + Fly + Noclip + Jumping + Speed + World + Credits + Anti Flashlight + FOV)
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local Camera = Workspace.CurrentCamera
+local localPlayer = Players.LocalPlayer
+
+---------------------------------------------------------------------
+-- WINDOW
+---------------------------------------------------------------------
+local Window = Rayfield:CreateWindow({
+    Name = "Damage Hub",
+    Icon = 0,
+    LoadingTitle = "Damage Hub Loading",
+    LoadingSubtitle = "by Elyme",
+    ShowText = "Damage Hub",
+    Theme = "Ocean",
+    ToggleUIKeybind = "Q",
+    ConfigurationSaving = {Enabled = true, FolderName = nil, FileName = "ViolenceDistrictHub"},
+})
+
+---------------------------------------------------------------------
+-- PLAYER TAB
+---------------------------------------------------------------------
+local PlayerTab = Window:CreateTab("Player")
+PlayerTab:CreateLabel("More features coming soon")
+
+-- Fly
+local flying = false
+local flySpeed = 60
+local function getHumanoidRootPart()
+    local char = localPlayer.Character
+    if char then return char:FindFirstChild("HumanoidRootPart") end
+end
+local function getHumanoid()
+    local char = localPlayer.Character
+    if char then return char:FindFirstChildOfClass("Humanoid") end
+end
+local function FlyLoop()
+    local root = getHumanoidRootPart()
+    if not root then return end
+    local hum = getHumanoid()
+    local conn
+    conn = RunService.RenderStepped:Connect(function()
+        if not flying then
+            if hum then hum.PlatformStand = false end
+            conn:Disconnect()
+            return
+        end
+        local moveDirection = Vector3.zero
+        local cam = Camera.CFrame
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDirection += cam.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDirection -= cam.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDirection -= cam.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDirection += cam.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDirection += Vector3.new(0,1,0) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDirection -= Vector3.new(0,1,0) end
+        if moveDirection.Magnitude > 0 then
+            root.Velocity = moveDirection.Unit * flySpeed
+            local dir = moveDirection.Unit
+            root.CFrame = CFrame.lookAt(root.Position, root.Position + dir)
+        else
+            root.Velocity = Vector3.zero
+        end
+        if hum then hum.PlatformStand = true end
+    end)
+end
+PlayerTab:CreateToggle({
+    Name = "Fly",
+    CurrentValue = false,
+    Flag = "FlyToggle",
+    Callback = function(state)
+        flying = state
+        local hum = getHumanoid()
+        if hum then hum.PlatformStand = state end
+        if state then FlyLoop() end
+    end
+})
+
+-- Noclip
+local noclipEnabled = false
+local noclipConnection = nil
+local function startNoclip()
+    local char = localPlayer.Character
+    if not char then return end
+    noclipConnection = RunService.Stepped:Connect(function()
+        if noclipEnabled and char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then part.CanCollide = false end
+            end
+        end
+    end)
+end
+local function stopNoclip()
+    if noclipConnection then noclipConnection:Disconnect() noclipConnection = nil end
+end
+PlayerTab:CreateToggle({
+    Name = "Noclip",
+    CurrentValue = false,
+    Flag = "NoclipToggle",
+    Callback = function(state)
+        noclipEnabled = state
+        if state then startNoclip() else stopNoclip() end
+    end
+})
+
+-- Jumping
+local jumpingEnabled = false
+local jumpPowerDefault = 50
+PlayerTab:CreateToggle({
+    Name = "Jumping",
+    CurrentValue = false,
+    Flag = "JumpingToggle",
+    Callback = function(state) jumpingEnabled = state end
+})
+RunService.RenderStepped:Connect(function()
+    local hum = getHumanoid()
+    if hum then hum.JumpPower = jumpingEnabled and jumpPowerDefault or 0 end
+end)
+
+-- WalkSpeed
+local walkSpeedEnabled = false
+local playerSpeed = 16
+PlayerTab:CreateToggle({
+    Name = "Enable Speed",
+    CurrentValue = false,
+    Flag = "SpeedToggle",
+    Callback = function(state) walkSpeedEnabled = state end
+})
+PlayerTab:CreateSlider({
+    Name = "Speed",
+    Range = {16, 300},
+    Increment = 1,
+    CurrentValue = playerSpeed,
+    Flag = "SpeedSlider",
+    Callback = function(value) playerSpeed = value end
+})
+RunService.RenderStepped:Connect(function()
+    local hum = getHumanoid()
+    if hum and walkSpeedEnabled then hum.WalkSpeed = playerSpeed end
+end)
+
+-- FOV Slider
+local fovValue = 70
+PlayerTab:CreateSlider({
+    Name = "FOV",
+    Range = {50, 200},
+    Increment = 1,
+    CurrentValue = fovValue,
+    Flag = "FOVSlider",
+    Callback = function(value)
+        fovValue = value
+    end
+})
+RunService.RenderStepped:Connect(function()
+    if Camera.FieldOfView ~= fovValue then
+        Camera.FieldOfView = fovValue
+    end
+end)
+
+---------------------------------------------------------------------
+-- VISUALS TAB
+---------------------------------------------------------------------
+local VisualsTab = Window:CreateTab("Visuals")
+
+-- Generator ESP
+local generatorESPEnabled = false
+local generatorHighlights = {}
+local function createGeneratorHighlight(model)
+    if not model:IsA("Model") or generatorHighlights[model] then return end
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "GeneratorESP_Highlight"
+    highlight.FillColor = Color3.fromRGB(0,170,255)
+    highlight.OutlineTransparency = 1
+    highlight.FillTransparency = 0.45
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Adornee = model
+    highlight.Enabled = generatorESPEnabled
+    highlight.Parent = localPlayer:WaitForChild("PlayerGui")
+    generatorHighlights[model] = highlight
+end
+VisualsTab:CreateToggle({
+    Name = "Generator ESP",
+    CurrentValue = false,
+    Flag = "GeneratorESPToggle",
+    Callback = function(state)
+        generatorESPEnabled = state
+        if not state then
+            for _, h in pairs(generatorHighlights) do if h then h:Destroy() end end
+            generatorHighlights = {}
+            return
+        end
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("Model") and obj.Name:lower():find("generator") then createGeneratorHighlight(obj) end
+        end
+        for _, h in pairs(generatorHighlights) do if h then h.Enabled = state end end
+    end
+})
+
+-- Hook ESP
+local hookESPEnabled = false
+local hookHighlights = {}
+local function createHookHighlight(model)
+    if not model:IsA("Model") or hookHighlights[model] then return end
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "HookESP_Highlight"
+    highlight.FillColor = Color3.fromRGB(0,255,0)
+    highlight.OutlineTransparency = 1
+    highlight.FillTransparency = 0.45
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Adornee = model
+    highlight.Enabled = hookESPEnabled
+    highlight.Parent = localPlayer:WaitForChild("PlayerGui")
+    hookHighlights[model] = highlight
+end
+VisualsTab:CreateToggle({
+    Name = "Hook ESP",
+    CurrentValue = false,
+    Flag = "HookESPToggle",
+    Callback = function(state)
+        hookESPEnabled = state
+        if not state then
+            for _, h in pairs(hookHighlights) do if h then h:Destroy() end end
+            hookHighlights = {}
+            return
+        end
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("Model") and obj.Name:lower():find("hook") then createHookHighlight(obj) end
+        end
+        for _, h in pairs(hookHighlights) do if h then h.Enabled = state end end
+    end
+})
+
+-- Player ESP
+local killerHighlights = {}
+local survivorHighlights = {}
+local killerESPEnabled = false
+local survivorESPEnabled = false
+local function updatePlayerESP(player)
+    if player == localPlayer then return end
+    local char = player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    if killerHighlights[player] then killerHighlights[player]:Destroy() killerHighlights[player] = nil end
+    if survivorHighlights[player] then survivorHighlights[player]:Destroy() survivorHighlights[player] = nil end
+    if killerESPEnabled and player.Team and player.Team.Name == "Killer" then
+        local h = Instance.new("Highlight")
+        h.FillColor = Color3.fromRGB(255,0,0)
+        h.OutlineTransparency = 1
+        h.FillTransparency = 0.45
+        h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        h.Adornee = char
+        h.Parent = localPlayer:WaitForChild("PlayerGui")
+        killerHighlights[player] = h
+    elseif survivorESPEnabled and player.Team and player.Team.Name == "Survivors" then
+        local h = Instance.new("Highlight")
+        h.FillColor = Color3.fromRGB(255,255,0)
+        h.OutlineTransparency = 1
+        h.FillTransparency = 0.45
+        h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        h.Adornee = char
+        h.Parent = localPlayer:WaitForChild("PlayerGui")
+        survivorHighlights[player] = h
+    end
+end
+VisualsTab:CreateToggle({
+    Name = "Killer ESP",
+    CurrentValue = false,
+    Flag = "KillerESPToggle",
+    Callback = function(state)
+        killerESPEnabled = state
+        if not state then
+            for player, h in pairs(killerHighlights) do if h then h:Destroy() end end
+            killerHighlights = {}
+        else
+            for _, player in ipairs(Players:GetPlayers()) do updatePlayerESP(player) end
+        end
+    end
+})
+VisualsTab:CreateToggle({
+    Name = "Survivor ESP",
+    CurrentValue = false,
+    Flag = "SurvivorESPToggle",
+    Callback = function(state)
+        survivorESPEnabled = state
+        if not state then
+            for player, h in pairs(survivorHighlights) do if h then h:Destroy() end end
+            survivorHighlights = {}
+        else
+            for _, player in ipairs(Players:GetPlayers()) do updatePlayerESP(player) end
+        end
+    end
+})
+Players.PlayerAdded:Connect(function(p)
+    p.CharacterAdded:Connect(function()
+        task.wait(1)
+        updatePlayerESP(p)
+    end)
+end)
+
+-- Skid and Pump ESP
+local pumpkinESPEnabled = false
+local pumpkinHighlights = {}
+local function createPumpkinHighlight(model)
+    if not model:IsA("Model") or pumpkinHighlights[model] then return end
+    local h = Instance.new("Highlight")
+    h.Name = "PumpkinESP_Highlight"
+    h.FillColor = Color3.fromRGB(255,140,0)
+    h.OutlineTransparency = 1
+    h.FillTransparency = 0.45
+    h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    h.Adornee = model
+    h.Parent = localPlayer:WaitForChild("PlayerGui")
+    pumpkinHighlights[model] = h
+end
+VisualsTab:CreateToggle({
+    Name = "Skid and Pump ESP",
+    CurrentValue = false,
+    Flag = "PumpkinESPToggle",
+    Callback = function(state)
+        pumpkinESPEnabled = state
+        for _, h in pairs(pumpkinHighlights) do if h then h:Destroy() end end
+        pumpkinHighlights = {}
+        if state then
+            for _, obj in ipairs(Workspace:GetDescendants()) do
+                if obj:IsA("Model") and obj.Name:lower():find("pumpkin") then
+                    createPumpkinHighlight(obj)
+                end
+            end
+        end
+    end
+})
+
+---------------------------------------------------------------------
+-- HITBOX TAB
+---------------------------------------------------------------------
+local HitBoxesTab = Window:CreateTab("HitBoxes")
+local hitboxEnabled = false
+local hitboxSize = 10
+HitBoxesTab:CreateToggle({
+    Name = "Enable HitBoxes",
+    CurrentValue = false,
+    Flag = "HitBoxToggle",
+    Callback = function(state)
+        hitboxEnabled = state
+        if not hitboxEnabled then
+            local char = localPlayer.Character
+            if char then
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") and part.Name == "HumanoidRootPart" then
+                        part.Size = Vector3.new(2,2,1)
+                    end
+                end
+            end
+        end
+    end
+})
+HitBoxesTab:CreateSlider({
+    Name = "HitBox Size",
+    Range = {10, 300},
+    Increment = 1,
+    CurrentValue = hitboxSize,
+    Flag = "HitBoxSlider",
+    Callback = function(value) hitboxSize = value end
+})
+RunService.RenderStepped:Connect(function()
+    if hitboxEnabled then
+        local char = localPlayer.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 and hum.Team and hum.Team.Name == "Killer" then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then hrp.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize) end
+            end
+        end
+    end
+end)
+
+---------------------------------------------------------------------
+-- CREDITS TAB
+---------------------------------------------------------------------
+local CreditsTab = Window:CreateTab("Credits")
+CreditsTab:CreateLabel("Made by: Elyme")
+CreditsTab:CreateLabel("Tester, best friend: Tokisay1")
+CreditsTab:CreateLabel("Discord Server:")
+CreditsTab:CreateButton({
+    Name = "Copy Discord Link",
+    Callback = function() setclipboard("https://discord.gg/sTrQ8WX57k") end
+})
+
+---------------------------------------------------------------------
+-- WORLD / FARM TAB
+---------------------------------------------------------------------
+-- Pump Farm / World Tab
+local WorldTab = Window:CreateTab("World / Farm")
+
+local pumpFarmEnabled = false
+local pumpFarmDelay = 1.5 -- задержка между тыквами
+local function getNearbyPumpkins(maxDistance)
+    local pumpkins = {}
+    local playerPos = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") and localPlayer.Character.HumanoidRootPart.Position
+    if not playerPos then return pumpkins end
+
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj.Name:lower():find("pumpkin") then
+            local part = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+            if part and part.CanCollide then -- фильтруем реальные ломаемые тыквы
+                local distance = (playerPos - part.Position).Magnitude
+                if distance <= maxDistance then
+                    table.insert(pumpkins, {model = obj, distance = distance})
+                end
+            end
+        end
+    end
+
+    -- сортируем по расстоянию, чтобы фармить ближние тыквы
+    table.sort(pumpkins, function(a,b) return a.distance < b.distance end)
+    return pumpkins
+end
+
+WorldTab:CreateToggle({
+    Name = "Pump Farm",
+    CurrentValue = false,
+    Flag = "PumpFarmToggle",
+    Callback = function(state)
+        pumpFarmEnabled = state
+        if pumpFarmEnabled then
+            spawn(function()
+                while pumpFarmEnabled do
+                    local pumpkins = getNearbyPumpkins(100) -- проверяем тыквы в радиусе 100
+                    for _, data in ipairs(pumpkins) do
+                        if not pumpFarmEnabled then break end
+                        local hrp = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        if hrp and data.model.PrimaryPart then
+                            hrp.CFrame = CFrame.new(data.model.PrimaryPart.Position + Vector3.new(0,3,0)) -- телепортируем над тыквой
+                            -- имитация клика левой кнопкой мыши
+                            local mouse = localPlayer:GetMouse()
+                            mouse1click()
+                            wait(pumpFarmDelay)
+                        end
+                    end
+                    wait(0.5) -- короткая пауза перед следующей проверкой
+                end
+            end)
+        end
+    end
+})
+
+---------------------------------------------------------------------
+-- OTHER TAB
+---------------------------------------------------------------------
+local OtherTab = Window:CreateTab("Other")
+local antiFlashlightEnabled = false
+OtherTab:CreateToggle({
+    Name = "Anti Flashlight",
+    CurrentValue = false,
+    Flag = "AntiFlashlightToggle",
+    Callback = function(state)
+        antiFlashlightEnabled = state
+    end
+})
+
+-- Проверка появления эффектов фонарика через DescendantAdded
+local function blockFlashEffect(instance)
+    if antiFlashlightEnabled and instance:IsA("ScreenGui") and instance.Name:match("Flash") then
+        instance:Destroy()
+    elseif antiFlashlightEnabled and instance:IsA("PostEffect") and instance.Name:match("Flash") then
+        instance.Enabled = false
+    end
+end
+
+localPlayer.PlayerGui.DescendantAdded:Connect(blockFlashEffect)
+Camera.DescendantAdded:Connect(blockFlashEffect)
+
+print("[✅] Violence District Hub Loaded Successfully")
