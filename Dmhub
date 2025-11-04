@@ -20,6 +20,7 @@ local Window = Rayfield:CreateWindow({
     Theme = "Ocean",
     ToggleUIKeybind = "Q",
     ConfigurationSaving = {Enabled = true, FolderName = nil, FileName = "ViolenceDistrictHub"},
+    Key = "BrainHub11ghjw24fbb6y845" -- <- добавленный ключ Rayfield
 })
 
 ---------------------------------------------------------------------
