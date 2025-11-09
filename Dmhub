@@ -18,7 +18,7 @@ local Window = Rayfield:CreateWindow({
     LoadingSubtitle = "by Elyme",
     ShowText = "Damage Hub",
     Theme = "Ocean",
-    ToggleUIKeybind = "Q",
+    ToggleUIKeybind = "K",
     ConfigurationSaving = {Enabled = true, FolderName = nil, FileName = "ViolenceDistrictHub"},
     Key = "BrainHub11ghjw24fbb6y845" -- <- добавленный ключ Rayfield
 })
